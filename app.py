@@ -163,38 +163,33 @@ else:
 
     st.info("الرجاء اختيار العائلة لبدء العرض.")
 
-st.markdown("---")
-st.markdown("### الأجزاء غير المستخدمة")
+st.markdown("---" * 2)
+st.markdown("### الأجزاء الغير مستخدمة في أي منتج بالملف كله")
 
-if selected_family and selected_family != "- اختر عائلة -":
-    if st.button("عرض الأجزاء اللي مش موجودة في أي منتج بالعائلة", type="secondary", use_container_width=True):
-        
-        family_data = structured_df[structured_df["Family"] == selected_family]
-        
-        # بناء pivot بنفس الطريقة اللي عملناها قبل كده
-        pivot_df = pd.DataFrame(index=components)
-        for _, row in family_data.iterrows():
-            pivot_df[row["Product"]] = row["Values"]
-        
-        # الأجزاء اللي مجموعها = 0 في كل المنتجات
-        unused = pivot_df[pivot_df.sum(axis=1) == 0].index.tolist()
-        
-        if not unused:
-            st.success("كل الأجزاء مستخدمة في منتج واحد على الأقل في هذه العائلة ✓")
-        else:
-            unused_df = pd.DataFrame({
-                "المكون غير المستخدم": unused
-            })
-            
-            # عرض بسيط وواضح
-            st.warning(f"عدد الأجزاء غير المستخدمة: **{len(unused)}**")
-            
-            html_unused = unused_df.to_html(index=False, classes='dataframe-html')
-            st.markdown(f'<div class="rtl-table-container">{html_unused}</div>', unsafe_allow_html=True)
-            
-            # اختياري: عرضها كقائمة بسيطة لو الجدول كبير
-            # with st.expander("عرض كقائمة نصية"):
-            #     st.write(",  ".join(unused))
-else:
-    st.info("اختر عائلة أولاً")
+if st.button("عرض الأجزاء اللي مش موجودة في أي منتج نهائيًا", type="primary", use_container_width=True):
 
+    # بناء pivot لكل الملف (كل المنتجات من كل العائلات)
+    all_pivot = pd.DataFrame(index=components)
+
+    for _, row in structured_df.iterrows():
+        all_pivot[row["Product"]] = row["Values"]
+
+    # الأجزاء اللي مجموعها = 0 في كل الأعمدة (مش مستخدمة في أي منتج)
+    completely_unused = all_pivot[all_pivot.sum(axis=1) == 0].index.tolist()
+
+    if not completely_unused:
+        st.success("كل الأجزاء الموجودة في القايمة مستخدمة في منتج واحد على الأقل ✓")
+    else:
+        unused_df = pd.DataFrame({
+            "المكون غير المستخدم في أي منتج": completely_unused
+        }).sort_values("المكون غير المستخدم في أي منتج")
+
+        st.warning(f"عدد الأجزاء الغير مستخدمة نهائيًا: **{len(completely_unused)}** جزء")
+
+        # عرض الجدول بنفس الستايل اللي مستخدم في باقي الصفحة
+        html_unused = unused_df.to_html(index=False, classes='dataframe-html')
+        st.markdown(f'<div class="rtl-table-container">{html_unused}</div>', unsafe_allow_html=True)
+
+        # اختياري: عرض عدد الصفوف + قائمة نصية مختصرة داخل expander
+        with st.expander("عرض كقائمة نصية (للنسخ السريع)"):
+            st.code("\n".join(completely_unused), language="text")
