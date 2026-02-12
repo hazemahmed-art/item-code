@@ -162,3 +162,54 @@ if selected_family and selected_family != "- اختر عائلة -":
 else:
 
     st.info("الرجاء اختيار العائلة لبدء العرض.")
+
+
+
+حاضر، الهدف إنك عايز في آخر الصفحة (بعد كل الحاجات اللي فوق) زر يعرض لك الأجزاء اللي مش مستخدمة في أي منتج داخل العائلة المختارة.
+هنا التعديل المقترح:
+الخطوات اللي هنعملها:
+
+نضيف زر جديد في آخر الكود (بعد كل الـ if المتداخلة)
+الزر ده يشتغل فقط لما تكون العائلة مختارة
+يحسب الأجزاء اللي مجموعها = 0 في كل منتجات العائلة
+يعرضها في جدول بسيط (أو حتى قائمة لو عايز أبسط)
+
+الكود المعدل (أضف الجزء ده في آخر الكود – بعد السطر الأخير تقريباً):
+Python# ────────────────────────────────────────────────
+#        زر جديد في النهاية تماماً
+# ────────────────────────────────────────────────
+
+st.markdown("---")
+st.markdown("### الأجزاء غير المستخدمة")
+
+if selected_family and selected_family != "- اختر عائلة -":
+    if st.button("عرض الأجزاء اللي مش موجودة في أي منتج بالعائلة", type="secondary", use_container_width=True):
+        
+        family_data = structured_df[structured_df["Family"] == selected_family]
+        
+        # بناء pivot بنفس الطريقة اللي عملناها قبل كده
+        pivot_df = pd.DataFrame(index=components)
+        for _, row in family_data.iterrows():
+            pivot_df[row["Product"]] = row["Values"]
+        
+        # الأجزاء اللي مجموعها = 0 في كل المنتجات
+        unused = pivot_df[pivot_df.sum(axis=1) == 0].index.tolist()
+        
+        if not unused:
+            st.success("كل الأجزاء مستخدمة في منتج واحد على الأقل في هذه العائلة ✓")
+        else:
+            unused_df = pd.DataFrame({
+                "المكون غير المستخدم": unused
+            })
+            
+            # عرض بسيط وواضح
+            st.warning(f"عدد الأجزاء غير المستخدمة: **{len(unused)}**")
+            
+            html_unused = unused_df.to_html(index=False, classes='dataframe-html')
+            st.markdown(f'<div class="rtl-table-container">{html_unused}</div>', unsafe_allow_html=True)
+            
+            # اختياري: عرضها كقائمة بسيطة لو الجدول كبير
+            # with st.expander("عرض كقائمة نصية"):
+            #     st.write(",  ".join(unused))
+else:
+    st.info("اختر عائلة أولاً")
