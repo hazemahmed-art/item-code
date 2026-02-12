@@ -74,7 +74,7 @@ st.markdown(
 st.title("📦 نظام عرض مكونات المنتجات")
 
 # ================== قراءة الملف ==================
-file_path = "v1.xlsx"
+file_path = "V2.xlsx"
 try:
     df = pd.read_excel(file_path, header=None)
 except Exception as e:
@@ -160,4 +160,5 @@ if selected_family and selected_family != "- اختر عائلة -":
             st.markdown(f"**عدد الأجزاء المطلوبة: {len(pivot_df)}**", unsafe_allow_html=True)
 
 else:
+
     st.info("الرجاء اختيار العائلة لبدء العرض.")
