@@ -4,6 +4,13 @@ import pandas as pd
 # إعداد الصفحة
 st.set_page_config(page_title="نظام مكونات المنتجات", layout="wide")
 
+st.set_page_config(
+    page_title="نظام إدارة قوائم المواد الصناعية",
+    layout="wide",
+    page_icon="logo.png",  # هنا رابط الصورة أو اسم الملف المحلي
+    initial_sidebar_state="collapsed"
+)
+
 
 # ===== RTL CSS الشامل =====
 st.markdown(
@@ -199,6 +206,7 @@ if st.button("عرض الأجزاء الغير موجودة في أي منتج �
         # اختياري: عرض عدد الصفوف + قائمة نصية مختصرة داخل expander
         with st.expander("عرض كقائمة نصية (للنسخ السريع)"):
             st.code("\n".join(completely_unused), language="text")
+
 
 
 
