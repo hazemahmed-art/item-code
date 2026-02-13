@@ -117,7 +117,7 @@ selected_family = st.selectbox("اختر اسم العائلة", options=["- ا�
 if selected_family and selected_family != "- اختر عائلة -":
     family_data = structured_df[structured_df["Family"] == selected_family]
     
-    st.subheader("1. اختيار المنتج")
+    st.subheader("اختيار المنتج")
     product_list = sorted(family_data["Product"].unique())
     selected_product = st.selectbox("اختر المنتج", options=["- اختر منتج -"] + product_list)
 
@@ -206,6 +206,7 @@ if st.button("عرض الأجزاء الغير موجودة في أي منتج �
         # اختياري: عرض عدد الصفوف + قائمة نصية مختصرة داخل expander
         with st.expander("عرض كقائمة نصية (للنسخ السريع)"):
             st.code("\n".join(completely_unused), language="text")
+
 
 
 
