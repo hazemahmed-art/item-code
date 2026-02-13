@@ -4,6 +4,11 @@ import pandas as pd
 # إعداد الصفحة
 st.set_page_config(page_title="نظام مكونات المنتجات", layout="wide")
 
+# ===== عرض اللوجو في المنتصف =====
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    st.image("logo.png", width=220)
+
 # ===== RTL CSS الشامل =====
 st.markdown(
     """
@@ -26,11 +31,9 @@ st.markdown(
     .rtl-table-container {
         direction: rtl;
         text-align: right;
-        /* تفعيل التمرير العمودي فقط */
         overflow-y: auto; 
         overflow-x: auto;
         margin: 20px 0;
-        /* تحديد الارتفاع ليظهر تقريباً 9 صفوف (Header + 9 rows) */
         height: 430px; 
         border: 1px solid #e6e9ef;
         border-radius: 5px;
@@ -39,7 +42,7 @@ st.markdown(
     .dataframe-html {
         width: 100%;
         border-collapse: collapse;
-        border: none; /* إزالة الحدود الداخلية للجدول لتناسب الحاوية */
+        border: none;
     }
     
     .dataframe-html th {
@@ -193,4 +196,5 @@ if st.button("عرض الأجزاء الغير موجودة في أي منتج �
         # اختياري: عرض عدد الصفوف + قائمة نصية مختصرة داخل expander
         with st.expander("عرض كقائمة نصية (للنسخ السريع)"):
             st.code("\n".join(completely_unused), language="text")
+
 
