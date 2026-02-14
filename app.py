@@ -50,7 +50,7 @@ st.markdown(
 
     .dataframe-html th {
         background-color: #4694f9;
-        padding: 12px;
+        padding: 8px;
         text-align: center;
         font-size: 23px;
         font-weight: bold;
@@ -198,4 +198,5 @@ if st.button("عرض الأجزاء الغير موجودة في أي منتج �
 
         with st.expander("عرض كقائمة نصية (للنسخ السريع)"):
             st.code("\n".join(completely_unused), language="text")
+
 
