@@ -90,7 +90,7 @@ with col3:
     st.image("logo.png", width=220)
 
 # ================== قراءة ملف Excel ==================
-file_path = "v3.xlsx"
+file_path = "v4.xlsx"
 try:
     df = pd.read_excel(file_path, header=None)
 except Exception as e:
@@ -174,29 +174,5 @@ if selected_family and selected_family != "- اختر عائلة -":
 
 else:
     st.info("الرجاء اختيار العائلة لبدء العرض.")
-st.markdown("---" * 2)
-
-# ================== عرض الأجزاء الغير مستخدمة ==================
-st.markdown("### الأجزاء الغير مستخدمة في أي منتج بالملف كله")
-if st.button("عرض الأجزاء الغير موجودة في أي منتج نهائيًا", type="primary", use_container_width=True):
-    all_pivot = pd.DataFrame(index=components)
-    for _, row in structured_df.iterrows():
-        all_pivot[row["Product"]] = row["Values"]
-
-    completely_unused = all_pivot[all_pivot.sum(axis=1) == 0].index.tolist()
-
-    if not completely_unused:
-        st.success("كل الأجزاء الموجودة في القايمة مستخدمة في منتج واحد على الأقل ✓")
-    else:
-        unused_df = pd.DataFrame({"المكون غير المستخدم في أي منتج": completely_unused}).sort_values(
-            "المكون غير المستخدم في أي منتج"
-        )
-        st.warning(f"عدد الأجزاء الغير مستخدمة نهائيًا: **{len(completely_unused)}** جزء")
-
-        html_unused = unused_df.to_html(index=False, classes='dataframe-html')
-        st.markdown(f'<div class="rtl-table-container">{html_unused}</div>', unsafe_allow_html=True)
-
-        with st.expander("عرض كقائمة نصية (للنسخ السريع)"):
-            st.code("\n".join(completely_unused), language="text")
 
 
