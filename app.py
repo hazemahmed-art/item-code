@@ -21,9 +21,14 @@ st.markdown(
         font-family: 'Cairo', sans-serif;
     }
 
-    h1, h2, h3, h4, h5, h6, p, span, label {
+    h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown {
         text-align: right !important;
         direction: rtl !important;
+    }
+
+    div[data-baseweb="select"] > div {
+        direction: rtl;
+        text-align: right;
     }
 
     .rtl-table-container {
@@ -46,7 +51,7 @@ st.markdown(
         background-color: #4694f9;
         padding: 8px;
         text-align: center;
-        font-size: 20px;
+        font-size: 22px;
         font-weight: bold;
         color: white;
         position: sticky;
@@ -74,91 +79,103 @@ col1, col2, col3 = st.columns([3, 3, 1])
 with col1:
     st.title("📦 نظام عرض مكونات المنتجات")
 with col3:
-    st.image("logo.png", width=220)
+    st.image("logo.png", width=200)
 
-# ================== قراءة الملف ==================
+# ================== قراءة ملف Excel ==================
 file_path = "v8.xlsx"
 
 try:
-    df = pd.read_excel(file_path)
+    df = pd.read_excel(file_path, header=None)
 except Exception as e:
-    st.error(f"خطأ في قراءة الملف: {e}")
+    st.error(f"خطأ في قراءة ملف Excel: {e}")
     st.stop()
 
-# ================== التأكد من وجود الأعمدة الأساسية ==================
-required_columns = ["Family", "Description", "Product"]
+# ================== استخراج أسماء الأجزاء ==================
+# الصف الأول فيه الأجزاء — أول 3 خلايا فاضيين
+components = df.iloc[0, 3:].fillna("غير محدد").astype(str).values
 
-for col in required_columns:
-    if col not in df.columns:
-        st.error(f"العمود {col} غير موجود في ملف الإكسل")
-        st.stop()
+records = []
 
-# ================== تحديد المكونات ==================
-component_columns = [col for col in df.columns if col not in required_columns]
+# ================== قراءة المنتجات ==================
+# نبدأ من الصف الثاني (index 1)
+for row in range(1, df.shape[0]):
+
+    family = df.iloc[row, 0]
+    description = df.iloc[row, 1]
+    product = df.iloc[row, 2]
+
+    if pd.isna(family) or pd.isna(product):
+        continue
+
+    values = pd.to_numeric(df.iloc[row, 3:], errors="coerce").fillna(0).values
+
+    records.append({
+        "Family": str(family).strip(),
+        "Product": str(product).strip(),
+        "Description": str(description).strip() if pd.notna(description) else "لا يوجد وصف",
+        "Values": values
+    })
+
+structured_df = pd.DataFrame(records)
 
 # ================== اختيار العائلة ==================
-family_list = sorted(df["Family"].dropna().unique())
-selected_family = st.selectbox("اختر اسم العائلة", ["- اختر عائلة -"] + family_list)
+family_list = sorted(structured_df["Family"].unique())
+selected_family = st.selectbox("اختر اسم العائلة", options=["- اختر عائلة -"] + family_list)
 
 if selected_family != "- اختر عائلة -":
 
-    family_data = df[df["Family"] == selected_family]
+    family_data = structured_df[structured_df["Family"] == selected_family]
 
     # ================== اختيار المنتج ==================
-    st.subheader("🔸 اختيار المنتج")
-    product_list = sorted(family_data["Product"].dropna().unique())
-    selected_product = st.selectbox("اختر المنتج", ["- اختر منتج -"] + product_list)
+    st.subheader("🔸اختيار المنتج")
+    product_list = sorted(family_data["Product"].unique())
+    selected_product = st.selectbox("اختر المنتج", options=["- اختر منتج -"] + product_list)
 
     if selected_product != "- اختر منتج -":
 
-        product_row = family_data[family_data["Product"] == selected_product].iloc[0]
-
         st.subheader("📋 تفاصيل المنتج")
+
+        product_row = family_data[family_data["Product"] == selected_product].iloc[0]
         st.info(f"**الوصف:** {product_row['Description']}")
 
-        # ================== جدول المكونات ==================
-        comp_data = []
+        # جدول المكونات
+        comp_df = pd.DataFrame({
+            "المكون": components,
+            "الكمية المطلوبة": product_row["Values"]
+        })
 
-        for comp in component_columns:
-            value = pd.to_numeric(product_row[comp], errors='coerce')
-            if pd.notna(value) and value > 0:
-                comp_data.append({
-                    "المكون": comp,
-                    "الكمية المطلوبة": f"{value:.3f}"
-                })
+        comp_df = comp_df[comp_df["الكمية المطلوبة"] > 0].reset_index(drop=True)
 
-        comp_df = pd.DataFrame(comp_data)
+        html_comp = comp_df.to_html(index=False, classes="dataframe-html")
+        st.markdown(f'<div class="rtl-table-container">{html_comp}</div>', unsafe_allow_html=True)
 
-        if comp_df.empty:
-            st.warning("لا توجد مكونات مسجلة لهذا المنتج")
-        else:
-            html_table = comp_df.to_html(index=False, classes="dataframe-html")
-            st.markdown(f'<div class="rtl-table-container">{html_table}</div>', unsafe_allow_html=True)
-            st.markdown(f"**عدد الأجزاء المطلوبة: {len(comp_df)}**")
+        st.markdown(f"**عدد الأجزاء المطلوبة: {len(comp_df)}**")
+        st.markdown("---")
 
-    # ================== عرض جدول كامل للعائلة ==================
+    # ================== عرض كل منتجات العائلة ==================
     if st.button("📊 عرض جدول كل منتجات العائلة المختارة", type="primary", use_container_width=True):
 
-        pivot_df = family_data[["Product"] + component_columns].copy()
-        pivot_df = pivot_df.set_index("Product")
+        st.subheader(f"جدول منتجات عائلة: {selected_family}")
 
-        # حذف الأعمدة التي كلها صفر
-        pivot_df = pivot_df.loc[:, (pivot_df != 0).any(axis=0)]
+        pivot_df = pd.DataFrame(index=components)
+
+        for _, row in family_data.iterrows():
+            pivot_df[row["Product"]] = row["Values"]
+
+        pivot_df = pivot_df[pivot_df.sum(axis=1) > 0]
 
         if pivot_df.empty:
-            st.warning("لا توجد بيانات لهذه العائلة")
+            st.warning("لا توجد بيانات مسجلة لهذه العائلة")
         else:
-            # تنسيق الأرقام
-            for col in pivot_df.columns:
-                pivot_df[col] = pivot_df[col].apply(
-                    lambda x: f"{float(x):.3f}" if pd.notna(x) and float(x) != 0 else "-"
-                )
+            pivot_df = pivot_df.reset_index().rename(columns={"index": "المكون"})
 
-            pivot_df = pivot_df.reset_index()
+            for col in pivot_df.columns[1:]:
+                pivot_df[col] = pivot_df[col].apply(lambda x: f"{x:.3f}" if x != 0 else "-")
 
-            html_table = pivot_df.to_html(index=False, classes="dataframe-html")
-            st.markdown(f'<div class="rtl-table-container">{html_table}</div>', unsafe_allow_html=True)
+            html_pivot = pivot_df.to_html(index=False, classes="dataframe-html")
+            st.markdown(f'<div class="rtl-table-container">{html_pivot}</div>', unsafe_allow_html=True)
+
+            st.markdown(f"**عدد الأجزاء المطلوبة: {len(pivot_df)}**")
 
 else:
     st.info("الرجاء اختيار العائلة لبدء العرض.")
-
