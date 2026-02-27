@@ -14,65 +14,65 @@ st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+
     html, body, [data-testid="stAppViewContainer"] {
         direction: rtl;
         text-align: right;
         font-family: 'Cairo', sans-serif;
     }
+
     h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown {
         text-align: right !important;
         direction: rtl !important;
     }
+
     div[data-baseweb="select"] > div {
         direction: rtl;
         text-align: right;
     }
+
     .rtl-table-container {
         direction: rtl;
         text-align: right;
         overflow-y: auto;
         overflow-x: auto;
         margin: 20px 0;
-        max-height: 520px;
+        height: 500px;
         border: 1px solid #e6e9ef;
-        border-radius: 8px;
+        border-radius: 5px;
     }
+
     .dataframe-html {
         width: 100%;
         border-collapse: collapse;
         border: none;
-        font-size: 19px;
     }
+
     .dataframe-html th {
         background-color: #4694f9;
-        padding: 10px 8px;
+        padding: 12px;
         text-align: center;
-        font-size: 21px;
+        font-size: 18px;
         font-weight: bold;
         color: white;
+        white-space: nowrap;
         position: sticky;
         top: 0;
-        z-index: 2;
-        min-width: 120px;
+        z-index: 10;
     }
+
     .dataframe-html td {
-        padding: 9px 10px;
-        border: 1px solid #e0e0e0;
+        padding: 10px;
+        border: 1px solid #e6e9ef;
         text-align: center;
-        font-size: 19px;
-        min-width: 110px;
-    }
-    .dataframe-html tr:nth-child(even) {
-        background-color: #f8fbff;
-    }
-    .dataframe-html .component-col {
-        background-color: #e6f0ff !important;
+        font-size: 16px;
         font-weight: bold;
-        position: sticky;
-        left: 0;
-        z-index: 1;
-        min-width: 220px;
     }
+
+    .dataframe-html tr:nth-child(even) {
+        background-color: #fafafa;
+    }
+
     .stAlert, .stButton>button {
         direction: rtl;
         text-align: right;
@@ -82,12 +82,16 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ================== عرض اللوجو والعنوان ==================
-col1, col2, col3 = st.columns([4, 4, 1])
+# ================== عرض اللوجو و العنوان ==================
+col1, col2, col3 = st.columns([3, 3, 1])
 with col1:
     st.title("📦 نظام عرض مكونات المنتجات")
 with col3:
-    st.image("logo.png", width=200)
+    # ملاحظة: تأكد من وجود ملف logo.png في نفس المجلد
+    try:
+        st.image("logo.png", width=220)
+    except:
+        pass
 
 # ================== قراءة ملف Excel ==================
 file_path = "v8.xlsx"
@@ -99,11 +103,11 @@ except Exception as e:
 
 # ================== استخراج البيانات ==================
 components = df.iloc[3:, 0].fillna("غير محدد").astype(str).values
-
 records = []
+
 for col in range(1, df.shape[1]):
-    family   = df.iloc[0, col]
-    product  = df.iloc[2, col]
+    family = df.iloc[0, col]
+    product = df.iloc[2, col]
     if pd.isna(family) or pd.isna(product):
         continue
     records.append({
@@ -120,10 +124,9 @@ family_list = sorted(structured_df["Family"].unique())
 selected_family = st.selectbox("اختر اسم العائلة", options=["- اختر عائلة -"] + family_list)
 
 if selected_family and selected_family != "- اختر عائلة -":
-
     family_data = structured_df[structured_df["Family"] == selected_family]
 
-    # ================== اختيار المنتج (تفاصيل منتج واحد) ==================
+    # ================== اختيار المنتج الفردي ==================
     st.subheader("🔸 اختيار المنتج")
     product_list = sorted(family_data["Product"].unique())
     selected_product = st.selectbox("اختر المنتج", options=["- اختر منتج -"] + product_list)
@@ -138,58 +141,48 @@ if selected_family and selected_family != "- اختر عائلة -":
             "الكمية المطلوبة": product_row["Values"]
         })
         comp_df = comp_df[comp_df["الكمية المطلوبة"] > 0].reset_index(drop=True)
-
         html_comp = comp_df.to_html(index=False, classes='dataframe-html')
         st.markdown(f'<div class="rtl-table-container">{html_comp}</div>', unsafe_allow_html=True)
-        st.markdown(f"**عدد المكونات المطلوبة: {len(comp_df)}**")
+        st.markdown(f"**عدد الأجزاء المطلوبة: {len(comp_df)}**")
         st.markdown("---")
 
-    # ================== عرض الجدول المنقول لكل المنتجات ==================
-    if st.button("📊 عرض جدول كل منتجات العائلة (منقول)", type="primary", use_container_width=True):
+    # ================== عرض الجدول المحول (Transposed) ==================
+    if st.button("📊 عرض جدول المقارنة الأفقي للعائلة", type="primary", use_container_width=True):
+        st.subheader(f"جدول مقارنة عائلة: {selected_family}")
 
-        st.subheader(f"جدول مكونات عائلة: {selected_family}")
-
-        # بناء الجدول المنقول
-        pivot_df = pd.DataFrame(index=components)
+        # 1. إنشاء مصفوفة القيم (المكونات هي الأعمدة)
+        transposed_data = []
         for _, row in family_data.iterrows():
-            pivot_df[row["Product"]] = row["Values"]
+            entry = {
+                "العائلة (Family)": row["Family"],
+                "الوصف (Description)": row["Description"],
+                "المنتج النهائي (Final Product)": row["Product"]
+            }
+            # إضافة المكونات كأعمدة
+            for i, comp_name in enumerate(components):
+                val = row["Values"][i]
+                entry[comp_name] = val
+            transposed_data.append(entry)
 
-        # حذف الصفوف التي كلها صفر
-        pivot_df = pivot_df.loc[pivot_df.sum(axis=1) > 0]
+        final_pivot = pd.DataFrame(transposed_data)
 
-        if pivot_df.empty:
-            st.warning("لا توجد بيانات صالحة لهذه العائلة")
-        else:
-            # إعادة ترتيب الأعمدة
-            product_columns = sorted(pivot_df.columns)
-            pivot_df = pivot_df[product_columns]
+        # 2. حذف أعمدة المكونات التي لا تستخدم في أي منتج من العائلة (كل قيمها 0)
+        # نحدد أعمدة المكونات فقط (تجاهل أول 3 أعمدة)
+        comp_cols = list(components)
+        cols_to_keep = ["العائلة (Family)", "الوصف (Description)", "المنتج النهائي (Final Product)"]
+        
+        # تصفية المكونات التي تحتوي على قيم أكبر من صفر
+        active_comps = [c for c in comp_cols if (final_pivot[c] > 0).any()]
+        final_pivot = final_pivot[cols_to_keep + active_comps]
 
-            # تحويل إلى تنسيق جميل + استبدال 0 بـ "-"
-            styled_df = pivot_df.reset_index().rename(columns={"index": "المكون"})
+        # 3. تنسيق الأرقام (تغيير 0 إلى "-" وتنسيق الكسور)
+        for col in active_comps:
+            final_pivot[col] = final_pivot[col].apply(lambda x: f"{x:.3f}" if x != 0 else "-")
 
-            for col in product_columns:
-                styled_df[col] = styled_df[col].apply(
-                    lambda x: f"{float(x):.3f}" if float(x) > 0 else "—"
-                )
-
-            # إضافة class لعمود المكون ليبقى مثبت
-            html_pivot = styled_df.to_html(
-                index=False,
-                classes='dataframe-html',
-                escape=False
-            )
-
-            # لتثبيت عمود المكون يمكن إضافة class يدوياً
-            html_pivot = html_pivot.replace(
-                '<th>المكون</th>',
-                '<th class="component-col">المكون</th>'
-            ).replace(
-                '<td>المكون</td>',
-                '<td class="component-col">المكون</td>'
-            )
-
-            st.markdown(f'<div class="rtl-table-container">{html_pivot}</div>', unsafe_allow_html=True)
-            st.markdown(f"**عدد المكونات المستخدمة: {len(styled_df)}**")
+        # 4. عرض الجدول
+        html_pivot = final_pivot.to_html(index=False, classes='dataframe-html')
+        st.markdown(f'<div class="rtl-table-container">{html_pivot}</div>', unsafe_allow_html=True)
+        st.caption(f"تم عرض {len(active_comps)} مكوناً مستخدماً في هذه العائلة.")
 
 else:
     st.info("الرجاء اختيار العائلة لبدء العرض.")
