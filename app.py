@@ -3,153 +3,181 @@ import pandas as pd
 
 # ================== إعداد الصفحة ==================
 st.set_page_config(
-    page_title="WaterStar - إدارة قوائم المواد",
+    page_title="WaterStar - نظام إدارة قوائم المواد",
     layout="wide",
     page_icon="logo.png",
     initial_sidebar_state="collapsed"
 )
 
-# ================== RTL CSS ==================
+# ================== RTL CSS الشامل ==================
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+
     html, body, [data-testid="stAppViewContainer"] {
         direction: rtl;
         text-align: right;
         font-family: 'Cairo', sans-serif;
     }
+
+    h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown {
+        text-align: right !important;
+        direction: rtl !important;
+    }
+
     .rtl-table-container {
         direction: rtl;
+        text-align: right;
+        overflow-y: auto;
+        overflow-x: auto;
         margin: 20px 0;
         max-height: 500px;
-        overflow: auto;
         border: 1px solid #e6e9ef;
         border-radius: 10px;
     }
+
     .dataframe-html {
         width: 100%;
         border-collapse: collapse;
     }
+
     .dataframe-html th {
         background-color: #4694f9;
-        color: white;
         padding: 12px;
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+        color: white;
         position: sticky;
         top: 0;
         z-index: 10;
     }
+
     .dataframe-html td {
         padding: 10px;
         border: 1px solid #e6e9ef;
         text-align: center;
+        font-size: 17px;
         font-weight: bold;
-        font-size: 18px;
     }
+
+    .dataframe-html tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+
     .stSelectbox label { font-size: 18px !important; font-weight: bold; }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# ================== العنوان واللوجو ==================
+# ================== عرض اللوجو و العنوان ==================
 col1, col2 = st.columns([4, 1])
 with col1:
-    st.title("📦 نظام عرض مكونات المنتجات")
+    st.title("📦 نظام إدارة وعرض مكونات المنتجات")
 with col2:
-    try: st.image("logo.png", width=150)
-    except: pass
+    try:
+        st.image("logo.png", width=180)
+    except:
+        pass
 
-# ================== قراءة ومعالجة البيانات ==================
+# ================== معالجة ملف Excel الذكية ==================
 file_path = "v7.xlsx"
-try:
-    # نقرأ الملف (الصف الأول هو العناوين تلقائياً)
-    df = pd.read_excel(file_path)
+
+@st.cache_data
+def load_and_structure_data(path):
+    # قراءة الملف بدون عناوين لرؤية الهيكل الخام
+    raw_df = pd.read_excel(path, header=None)
     
-    # 1. إعادة تسمية أول 3 أعمدة لأنها "فاضية" في الإكسيل عندك
-    # العمود 0 -> العائلة، العمود 1 -> الوصف، العمود 2 -> المنتج
-    new_cols = list(df.columns)
-    new_cols[0] = "العائلة"
-    new_cols[1] = "الوصف"
-    new_cols[2] = "المنتج_النهائي"
-    df.columns = new_cols
+    # 1. استخراج أسماء الأجزاء من الصف الأول (من العمود الرابع فصاعداً)
+    # iloc[0, 3:] تعني الصف الأول، من العمود رقم 4 للنهاية
+    parts_list = raw_df.iloc[0, 3:].values
+    
+    # 2. استخراج البيانات الفعلية (من الصف الثاني فصاعداً)
+    data_df = raw_df.iloc[1:].copy()
+    
+    # 3. إعادة تسمية الأعمدة برمجياً
+    # أول 3 أعمدة (العائلة، الوصف، المنتج) والباقي أسماء الأجزاء
+    custom_columns = ["Family", "Description", "Product"] + list(parts_list)
+    data_df.columns = custom_columns
+    
+    # 4. تنظيف البيانات من القيم الفارغة في الأعمدة الأساسية
+    data_df['Family'] = data_df['Family'].astype(str).str.strip()
+    data_df['Product'] = data_df['Product'].astype(str).str.strip()
+    data_df = data_df[data_df['Family'] != "nan"] # حذف الصفوف الفارغة
+    
+    return data_df, list(parts_list)
 
-    # 2. تحديد أسماء الأجزاء (بقية الأعمدة من الرابع للأخير)
-    parts_columns = df.columns[3:]
-
-    # 3. تنظيف البيانات (حذف الصفوف التي لا تحتوي على اسم عائلة)
-    df = df.dropna(subset=["العائلة"])
-
+try:
+    df, all_parts = load_and_structure_data(file_path)
 except Exception as e:
-    st.error(f"حدث خطأ في قراءة الملف: {e}")
+    st.error(f"خطأ في معالجة الملف: {e}")
     st.stop()
 
-# ================== واجهة المستخدم ==================
+# ================== واجهة اختيار المنتج ==================
 
-# --- اختيار العائلة ---
-family_options = sorted(df["العائلة"].unique().astype(str))
-selected_family = st.selectbox(
-    "🗂️ اختر اسم العائلة", 
-    options=["- اختر عائلة -"] + family_options
-)
+# اختيار العائلة
+family_list = sorted(df["Family"].unique())
+selected_family = st.selectbox("🗂️ اختر اسم العائلة", options=["- اختر عائلة -"] + family_list)
 
 if selected_family != "- اختر عائلة -":
-    # فلترة حسب العائلة
-    family_data = df[df["العائلة"].astype(str) == selected_family]
+    family_data = df[df["Family"] == selected_family]
 
-    # --- اختيار المنتج ---
-    product_options = sorted(family_data["المنتج_النهائي"].unique().astype(str))
-    selected_product = st.selectbox(
-        "📦 اختر المنتج النهائي", 
-        options=["- اختر منتج -"] + product_options
-    )
+    # اختيار المنتج
+    product_list = sorted(family_data["Product"].unique())
+    selected_product = st.selectbox("📦 اختر المنتج النهائي", options=["- اختر منتج -"] + product_list)
 
-    if selected_product != "- اختر منتج -":
-        # جلب بيانات المنتج
-        product_row = family_data[family_data["المنتج_النهائي"].astype(str) == selected_product].iloc[0]
+    if selected_product != "- اختر product -":
+        # جلب صف المنتج المختار
+        product_row = family_data[family_data["Product"] == selected_product].iloc[0]
         
         st.markdown(f"### 📋 تفاصيل: {selected_product}")
-        st.info(f"📝 **الوصف:** {product_row['الوصف']}")
+        st.info(f"**الوصف:** {product_row['Description']}")
 
-        # استخراج المكونات (التي قيمتها أكبر من 0)
-        comp_list = []
-        for part in parts_columns:
-            val = product_row[part]
-            # التأكد أن القيمة رقمية وأكبر من صفر
+        # تجميع المجزاء التي كميتها أكبر من صفر لهذا المنتج
+        comp_items = []
+        for p_name in all_parts:
+            val = product_row[p_name]
             try:
-                numeric_val = float(val)
-                if numeric_val > 0:
-                    comp_list.append({"المكون (الجزء)": part, "الكمية": numeric_val})
+                num_val = float(val)
+                if num_val > 0:
+                    comp_items.append({"المكون (الجزء)": p_name, "الكمية المطلوبة": num_val})
             except:
                 continue
         
-        comp_df = pd.DataFrame(comp_list)
-
-        if not comp_df.empty:
-            html_table = comp_df.to_html(index=False, classes='dataframe-html')
-            st.markdown(f'<div class="rtl-table-container">{html_table}</div>', unsafe_allow_html=True)
-            st.success(f"✅ إجمالي عدد الأجزاء: {len(comp_df)}")
+        if comp_items:
+            comp_df = pd.DataFrame(comp_items)
+            html_comp = comp_df.to_html(index=False, classes='dataframe-html')
+            st.markdown(f'<div class="rtl-table-container">{html_comp}</div>', unsafe_allow_html=True)
+            st.success(f"✅ إجمالي الأجزاء المطلوبة: {len(comp_df)}")
         else:
             st.warning("لا توجد كميات مسجلة لهذا المنتج.")
 
-    # --- زر عرض الجدول الشامل للعائلة ---
-    st.write("---")
-    if st.button("📊 عرض مقارنة شاملة لكل منتجات العائلة", use_container_width=True):
-        # تجهيز جدول المقارنة (المنتجات أعمدة والأجزاء صفوف)
-        pivot_df = family_data.set_index("المنتج_النهائي")[parts_columns].transpose()
+    # ================== جدول مقارنة العائلة ==================
+    st.markdown("---")
+    if st.button("📊 عرض جدول مقارنة كافة منتجات العائلة", type="primary", use_container_width=True):
+        st.subheader(f"مقارنة منتجات عائلة: {selected_family}")
         
-        # حذف الأجزاء التي لا تستخدم في أي منتج من العائلة
+        # قلب الجدول: الأجزاء تصبح صفوف والمنتجات تصبح أعمدة
+        pivot_df = family_data.set_index("Product")[all_parts].transpose()
+        
+        # حذف المكونات التي لا تستخدم نهائياً في هذه العائلة (مجموعها صفر)
         pivot_df = pivot_df.loc[(pivot_df.fillna(0).astype(float).sum(axis=1) > 0)]
         
         if not pivot_df.empty:
-            pivot_display = pivot_df.reset_index().rename(columns={"index": "المكون"})
-            # تنسيق الأرقام لتبديل الأصفار بشرطة
-            for col in pivot_display.columns[1:]:
-                pivot_display[col] = pivot_display[col].apply(lambda x: f"{x:g}" if (pd.notna(x) and x != 0) else "-")
+            pivot_display = pivot_df.reset_index().rename(columns={"index": "المكون / الجزء"})
             
-            st.markdown(f'<div class="rtl-table-container">{pivot_display.to_html(index=False, classes="dataframe-html")}</div>', unsafe_allow_html=True)
+            # تنسيق الأرقام: استبدال 0 أو NaN بشرطة لسهولة القراءة
+            for col in pivot_display.columns[1:]:
+                pivot_display[col] = pivot_display[col].apply(
+                    lambda x: f"{x:g}" if (pd.notna(x) and x != 0) else "-"
+                )
+            
+            html_pivot = pivot_display.to_html(index=False, classes='dataframe-html')
+            st.markdown(f'<div class="rtl-table-container">{html_pivot}</div>', unsafe_allow_html=True)
         else:
-            st.warning("لا توجد بيانات متاحة للعرض.")
+            st.warning("لا توجد بيانات كميات لهذه العائلة.")
 
 else:
-    st.info("💡 الرجاء اختيار العائلة من القائمة أعلاه.")
+    st.info("💡 يرجى اختيار اسم العائلة لعرض المنتجات المتاحة.")
